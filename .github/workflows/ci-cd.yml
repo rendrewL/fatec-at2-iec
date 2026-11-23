@@ -1,0 +1,57 @@
+name: CI/CD - Docker e Render
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: Validar código (tipos, build e testes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências
+        run: npm install
+      - name: Checagem de tipos
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Testes
+        run: npm test
+
+  docker:
+    name: Construir imagem Docker
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker build
+        run: docker build -t fatec-simple-api:latest .
+
+  deploy:
+    name: Implantar no Render
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar deploy via Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Configure o secret RENDER_DEPLOY_HOOK_URL no GitHub." >&2
+            exit 1
+          fi
+          STATUS=$(curl --silent --show-error --retry 3 -X POST \
+            -o /dev/null -w "%{http_code}" "$RENDER_DEPLOY_HOOK_URL")
+          echo "Deploy Hook respondeu HTTP $STATUS"
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ]; then
+            echo "Falha ao disparar o deploy no Render." >&2
+            exit 1
+          fi
