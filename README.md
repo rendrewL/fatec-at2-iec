@@ -94,3 +94,5 @@ docker run --rm -p 3000:3000 -e DB_HOST=... -e DB_NAME=... -e DB_USER=... -e DB_
 - [ ] Atualizar links públicos e gravar vídeo narrado de 3 a 4 minutos.
 
 **Nota:** retorno HTTP 200/201 do Deploy Hook confirma que o Render aceitou a solicitação, não que o deploy terminou. Confirme o estado `Live` no painel.
+
+Teste de entrega continua via GitHub Actions e Render.
