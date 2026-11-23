@@ -4,6 +4,8 @@ API REST em **Node.js + Express + TypeScript** com **PostgreSQL**, empacotada em
 
 ## Rotas
 
+teste
+
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | GET | `/` | Mensagem de boas-vindas |
@@ -96,3 +98,14 @@ docker run --rm -p 3000:3000 -e DB_HOST=... -e DB_NAME=... -e DB_USER=... -e DB_
 **Nota:** retorno HTTP 200/201 do Deploy Hook confirma que o Render aceitou a solicitação, não que o deploy terminou. Confirme o estado `Live` no painel.
 
 Teste de entrega continua via GitHub Actions e Render.
+
+
+## API em Produção
+
+A API está publicada no Render e utiliza PostgreSQL
+hospedado no Supabase.
+
+- URL: https://fatec-at2-iec.onrender.com
+- Health Check: https://fatec-at2-iec.onrender.com/api/health
+- Listagem de alunos: https://fatec-at2-iec.onrender.com/alunos
+- Listagem de disciplinas: https://fatec-at2-iec.onrender.com/disciplinas
