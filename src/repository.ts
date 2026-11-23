@@ -1,3 +1,4 @@
+
 import type { Pool } from "pg";
 
 export interface Item {
@@ -8,6 +9,8 @@ export interface Item {
 export interface ItemRepository {
   listar(): Promise<Item[]>;
   criar(nome: string): Promise<Item>;
+  atualizar(id: number, nome: string): Promise<Item | null>;
+  excluir(id: number): Promise<boolean>;
 }
 
 export type Tabela = "alunos" | "disciplinas";
@@ -21,7 +24,7 @@ const SEEDS: Record<Tabela, string[]> = {
   ],
 };
 
-/** Cria as tabelas (se não existirem) e popula dados iniciais quando vazias. */
+/** Cria as tabelas e insere dados iniciais quando estiverem vazias. */
 export async function inicializarBanco(pool: Pool): Promise<void> {
   for (const tabela of Object.keys(SEEDS) as Tabela[]) {
     await pool.query(
@@ -30,28 +33,62 @@ export async function inicializarBanco(pool: Pool): Promise<void> {
          nome VARCHAR(120) NOT NULL
        )`,
     );
-    const { rows } = await pool.query(`SELECT COUNT(*)::int AS total FROM ${tabela}`);
+
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM ${tabela}`,
+    );
+
     if (rows[0].total === 0) {
       for (const nome of SEEDS[tabela]) {
-        await pool.query(`INSERT INTO ${tabela} (nome) VALUES ($1)`, [nome]);
+        await pool.query(
+          `INSERT INTO ${tabela} (nome) VALUES ($1)`,
+          [nome],
+        );
       }
     }
   }
 }
 
-/** Repositório PostgreSQL. O nome da tabela vem de um tipo fechado (sem entrada do usuário). */
-export function criarRepositorioPg(pool: Pool, tabela: Tabela): ItemRepository {
+/** Repositório PostgreSQL com operações CRUD. */
+export function criarRepositorioPg(
+  pool: Pool,
+  tabela: Tabela,
+): ItemRepository {
   return {
     async listar() {
-      const { rows } = await pool.query<Item>(`SELECT id, nome FROM ${tabela} ORDER BY id`);
+      const { rows } = await pool.query<Item>(
+        `SELECT id, nome FROM ${tabela} ORDER BY id`,
+      );
       return rows;
     },
+
     async criar(nome) {
       const { rows } = await pool.query<Item>(
         `INSERT INTO ${tabela} (nome) VALUES ($1) RETURNING id, nome`,
         [nome],
       );
       return rows[0];
+    },
+
+    async atualizar(id, nome) {
+      const { rows } = await pool.query<Item>(
+        `UPDATE ${tabela}
+         SET nome = $1
+         WHERE id = $2
+         RETURNING id, nome`,
+        [nome, id],
+      );
+
+      return rows[0] ?? null;
+    },
+
+    async excluir(id) {
+      const resultado = await pool.query(
+        `DELETE FROM ${tabela} WHERE id = $1`,
+        [id],
+      );
+
+      return (resultado.rowCount ?? 0) > 0;
     },
   };
 }

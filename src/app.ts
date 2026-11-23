@@ -1,5 +1,6 @@
 import express, { type NextFunction, type Request, type Response, Router } from "express";
 import type { ItemRepository } from "./repository";
+import cors from "cors";
 
 export interface Dependencias {
   alunos: ItemRepository;
@@ -30,12 +31,76 @@ function criarRotasDeItens(repo: ItemRepository): Router {
     }
   });
 
+
+  router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      const nome: unknown = req.body?.nome;
+
+      if (!Number.isSafeInteger(id) || id <= 0) {
+        res.status(400).json({ erro: "ID inválido." });
+        return;
+      }
+
+      if (
+        typeof nome !== "string" ||
+        nome.trim().length === 0 ||
+        nome.trim().length > 120
+      ) {
+        res.status(400).json({
+          erro: "Informe 'nome' como texto de 1 a 120 caracteres.",
+        });
+        return;
+      }
+
+      const item = await repo.atualizar(id, nome.trim());
+
+      if (!item) {
+        res.status(404).json({ erro: "Registro não encontrado." });
+        return;
+      }
+
+      res.json(item);
+    } catch (erro) {
+      next(erro);
+    }
+  });
+
+  router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isSafeInteger(id) || id <= 0) {
+        res.status(400).json({ erro: "ID inválido." });
+        return;
+      }
+
+      const excluido = await repo.excluir(id);
+
+      if (!excluido) {
+        res.status(404).json({ erro: "Registro não encontrado." });
+        return;
+      }
+
+      res.status(204).send();
+    } catch (erro) {
+      next(erro);
+    }
+  });
+
+
   return router;
 }
 
 export function criarApp({ alunos, disciplinas }: Dependencias) {
   const app = express();
-  app.use(express.json());
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}));
+
+app.use(express.json());
 
   app.get("/", (_req, res) => {
     res.type("text/plain").send("Bem-vindo a primeira aula de IEC da FATEC!");
